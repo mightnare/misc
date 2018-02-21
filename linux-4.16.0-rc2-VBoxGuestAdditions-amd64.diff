@@ -1,0 +1,188 @@
+diff -urN VBoxGuestAdditions-amd64.orig/src/vboxguest-5.2.6/vboxguest/VBoxGuest-linux.c VBoxGuestAdditions-amd64/src/vboxguest-5.2.6/vboxguest/VBoxGuest-linux.c
+--- VBoxGuestAdditions-amd64.orig/src/vboxguest-5.2.6/vboxguest/VBoxGuest-linux.c	2018-01-15 21:51:01.000000000 +0800
++++ VBoxGuestAdditions-amd64/src/vboxguest-5.2.6/vboxguest/VBoxGuest-linux.c	2018-02-21 18:44:26.672000000 +0800
+@@ -1058,7 +1058,7 @@
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0)
+ 
+ /** log and dbg_log parameter setter. */
+-static int vgdrvLinuxParamLogGrpSet(const char *pszValue, struct kernel_param *pParam)
++static int vgdrvLinuxParamLogGrpSet(const char *pszValue, const struct kernel_param *pParam)
+ {
+     if (g_fLoggerCreated)
+     {
+@@ -1073,7 +1073,7 @@
+ }
+ 
+ /** log and dbg_log parameter getter. */
+-static int vgdrvLinuxParamLogGrpGet(char *pszBuf, struct kernel_param *pParam)
++static int vgdrvLinuxParamLogGrpGet(char *pszBuf, const struct kernel_param *pParam)
+ {
+     PRTLOGGER pLogger = pParam->name[0] == 'd' ? RTLogDefaultInstance() : RTLogRelGetDefaultInstance();
+     *pszBuf = '\0';
+@@ -1084,7 +1084,7 @@
+ 
+ 
+ /** log and dbg_log_flags parameter setter. */
+-static int vgdrvLinuxParamLogFlagsSet(const char *pszValue, struct kernel_param *pParam)
++static int vgdrvLinuxParamLogFlagsSet(const char *pszValue, const struct kernel_param *pParam)
+ {
+     if (g_fLoggerCreated)
+     {
+@@ -1098,7 +1098,7 @@
+ }
+ 
+ /** log and dbg_log_flags parameter getter. */
+-static int vgdrvLinuxParamLogFlagsGet(char *pszBuf, struct kernel_param *pParam)
++static int vgdrvLinuxParamLogFlagsGet(char *pszBuf, const struct kernel_param *pParam)
+ {
+     PRTLOGGER pLogger = pParam->name[0] == 'd' ? RTLogDefaultInstance() : RTLogRelGetDefaultInstance();
+     *pszBuf = '\0';
+@@ -1109,7 +1109,7 @@
+ 
+ 
+ /** log and dbg_log_dest parameter setter. */
+-static int vgdrvLinuxParamLogDstSet(const char *pszValue, struct kernel_param *pParam)
++static int vgdrvLinuxParamLogDstSet(const char *pszValue, const struct kernel_param *pParam)
+ {
+     if (g_fLoggerCreated)
+     {
+@@ -1123,7 +1123,7 @@
+ }
+ 
+ /** log and dbg_log_dest parameter getter. */
+-static int vgdrvLinuxParamLogDstGet(char *pszBuf, struct kernel_param *pParam)
++static int vgdrvLinuxParamLogDstGet(char *pszBuf, const struct kernel_param *pParam)
+ {
+     PRTLOGGER pLogger = pParam->name[0] == 'd' ? RTLogDefaultInstance() : RTLogRelGetDefaultInstance();
+     *pszBuf = '\0';
+@@ -1134,7 +1134,7 @@
+ 
+ 
+ /** r3_log_to_host parameter setter. */
+-static int vgdrvLinuxParamR3LogToHostSet(const char *pszValue, struct kernel_param *pParam)
++static int vgdrvLinuxParamR3LogToHostSet(const char *pszValue, const struct kernel_param *pParam)
+ {
+     if (    pszValue == NULL
+         || *pszValue == '\0'
+@@ -1152,7 +1152,7 @@
+ }
+ 
+ /** r3_log_to_host parameter getter. */
+-static int vgdrvLinuxParamR3LogToHostGet(char *pszBuf, struct kernel_param *pParam)
++static int vgdrvLinuxParamR3LogToHostGet(char *pszBuf, const struct kernel_param *pParam)
+ {
+     strcpy(pszBuf, g_DevExt.fLoggingEnabled ? "enabled" : "disabled");
+     return strlen(pszBuf);
+diff -urN VBoxGuestAdditions-amd64.orig/src/vboxguest-5.2.6/vboxvideo/vbox_mode.c VBoxGuestAdditions-amd64/src/vboxguest-5.2.6/vboxvideo/vbox_mode.c
+--- VBoxGuestAdditions-amd64.orig/src/vboxguest-5.2.6/vboxvideo/vbox_mode.c	2018-01-15 21:51:01.000000000 +0800
++++ VBoxGuestAdditions-amd64/src/vboxguest-5.2.6/vboxvideo/vbox_mode.c	2018-02-21 18:44:26.672000000 +0800
+@@ -397,7 +397,7 @@
+ 
+ 	/* pick the encoder ids */
+ 	if (enc_id)
+-		return drm_encoder_find(connector->dev, enc_id);
++		return drm_encoder_find(connector->dev, NULL, enc_id);
+ 
+ 	return NULL;
+ }
+diff -urN VBoxGuestAdditions-amd64.orig/src/vboxguest-5.2.6/vboxvideo/vbox_ttm.c VBoxGuestAdditions-amd64/src/vboxguest-5.2.6/vboxvideo/vbox_ttm.c
+--- VBoxGuestAdditions-amd64.orig/src/vboxguest-5.2.6/vboxvideo/vbox_ttm.c	2018-01-15 21:51:01.000000000 +0800
++++ VBoxGuestAdditions-amd64/src/vboxguest-5.2.6/vboxvideo/vbox_ttm.c	2018-02-21 20:43:40.212304000 +0800
+@@ -195,8 +195,8 @@
+ }
+ 
+ static int vbox_bo_move(struct ttm_buffer_object *bo,
+-			bool evict, bool interruptible,
+-			bool no_wait_gpu, struct ttm_mem_reg *new_mem)
++			bool evict, struct ttm_operation_ctx *ctx,
++			struct ttm_mem_reg *new_mem)
+ {
+ 	int r;
+ 
+@@ -205,7 +205,7 @@
+ #elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0) && !defined(RHEL_74)
+ 	r = ttm_bo_move_memcpy(bo, evict, interruptible, no_wait_gpu, new_mem);
+ #else
+-	r = ttm_bo_move_memcpy(bo, interruptible, no_wait_gpu, new_mem);
++	r = ttm_bo_move_memcpy(bo, ctx, new_mem);
+ #endif
+ 	return r;
+ }
+@@ -240,9 +240,9 @@
+ 	return tt;
+ }
+ 
+-static int vbox_ttm_tt_populate(struct ttm_tt *ttm)
++static int vbox_ttm_tt_populate(struct ttm_tt *ttm, struct ttm_operation_ctx *ctx)
+ {
+-	return ttm_pool_populate(ttm);
++	return ttm_pool_populate(ttm, ctx);
+ }
+ 
+ static void vbox_ttm_tt_unpopulate(struct ttm_tt *ttm)
+@@ -263,7 +263,7 @@
+ 	.verify_access = vbox_bo_verify_access,
+ 	.io_mem_reserve = &vbox_ttm_io_mem_reserve,
+ 	.io_mem_free = &vbox_ttm_io_mem_free,
+-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
++#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 16, 0))
+ 	.io_mem_pfn = ttm_bo_default_io_mem_pfn,
+ #endif
+ #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 11, 0)) \
+@@ -419,6 +419,7 @@
+ int vbox_bo_pin(struct vbox_bo *bo, u32 pl_flag, u64 *gpu_addr)
+ {
+ 	int i, ret;
++	struct ttm_operation_ctx ctx;
+ 
+ 	if (bo->pin_count) {
+ 		bo->pin_count++;
+@@ -433,7 +434,9 @@
+ 	for (i = 0; i < bo->placement.num_placement; i++)
+ 		PLACEMENT_FLAGS(bo->placements[i]) |= TTM_PL_FLAG_NO_EVICT;
+ 
+-	ret = ttm_bo_validate(&bo->bo, &bo->placement, false, false);
++	ctx.interruptible = false;
++	ctx.no_wait_gpu = false;
++	ret = ttm_bo_validate(&bo->bo, &bo->placement, &ctx);
+ 	if (ret)
+ 		return ret;
+ 
+@@ -448,6 +451,7 @@
+ int vbox_bo_unpin(struct vbox_bo *bo)
+ {
+ 	int i, ret;
++	struct ttm_operation_ctx ctx;
+ 
+ 	if (!bo->pin_count) {
+ 		DRM_ERROR("unpin bad %p\n", bo);
+@@ -460,7 +464,9 @@
+ 	for (i = 0; i < bo->placement.num_placement; i++)
+ 		PLACEMENT_FLAGS(bo->placements[i]) &= ~TTM_PL_FLAG_NO_EVICT;
+ 
+-	ret = ttm_bo_validate(&bo->bo, &bo->placement, false, false);
++	ctx.interruptible = false;
++	ctx.no_wait_gpu = false;
++	ret = ttm_bo_validate(&bo->bo, &bo->placement, &ctx);
+ 	if (ret)
+ 		return ret;
+ 
+@@ -475,6 +481,7 @@
+ int vbox_bo_push_sysram(struct vbox_bo *bo)
+ {
+ 	int i, ret;
++	struct ttm_operation_ctx ctx;
+ 
+ 	if (!bo->pin_count) {
+ 		DRM_ERROR("unpin bad %p\n", bo);
+@@ -492,7 +499,9 @@
+ 	for (i = 0; i < bo->placement.num_placement; i++)
+ 		PLACEMENT_FLAGS(bo->placements[i]) |= TTM_PL_FLAG_NO_EVICT;
+ 
+-	ret = ttm_bo_validate(&bo->bo, &bo->placement, false, false);
++	ctx.interruptible = false;
++	ctx.no_wait_gpu = false;
++	ret = ttm_bo_validate(&bo->bo, &bo->placement, &ctx);
+ 	if (ret) {
+ 		DRM_ERROR("pushing to VRAM failed\n");
+ 		return ret;
